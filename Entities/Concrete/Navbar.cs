@@ -10,7 +10,7 @@ namespace Entities.Concrete
     public class Navbar : IEntity
     {
         public int Id { get; set; }
-        public string Name { get; set; }
+        public string Body { get; set; }
         public string Link { get; set; }    
     }
 }

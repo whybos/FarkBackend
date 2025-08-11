@@ -12,6 +12,6 @@ namespace Entities.Concrete
         public int Id { get; set; }
         public string Body { get; set; }
         public string Summary { get; set; }
-        public string UpdateDate { get; set; }
+        public string Date { get; set; }
     }
 }
