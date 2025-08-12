@@ -54,5 +54,22 @@ namespace WebAPI.Controllers
 
             return BadRequest(result.Message);
         }
+
+
+        [HttpPost("validate")]
+        public ActionResult Validate()
+        {
+            
+            var result = _authService.Validate();
+
+            if (result.Success)
+            {
+                return Ok(result);
+            }
+            return BadRequest(result);
+        }
+
+
+
     }
 }

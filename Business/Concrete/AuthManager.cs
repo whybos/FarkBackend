@@ -74,5 +74,11 @@ namespace Business.Concrete
             var accessToken = _tokenHelper.CreateToken(user, claims.Data);
             return new SuccessDataResult<AccessToken>(accessToken, Messages.AccessTokenCreated);
         }
+
+        [SecuredOperation("superAdmin,admin")]
+        public IResult Validate()
+        {
+            return new SuccessResult();
+        }
     }
 }

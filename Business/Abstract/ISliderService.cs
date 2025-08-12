@@ -1,5 +1,6 @@
 ﻿using Core.Utilities.Results.Abstract;
 using Entities.Concrete;
+using Entities.DTOs;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,5 +12,8 @@ namespace Business.Abstract
     public interface ISliderService
     {
         IDataResult<List<Slider>> GetAll();
+        IResult Delete(int id);
+        IResult Update(SliderUpdateDto sliderUpdateDto);
+        IResult Add(SliderUpdateDto sliderUpdateDto);
     }
 }
