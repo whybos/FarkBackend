@@ -6,6 +6,7 @@ using Core.Utilities.Results.Concrete;
 using DataAccess.Abstract;
 using DataAccess.Concrete.EntityFramework;
 using Entities.Concrete;
+using Entities.DTOs;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,7 +22,47 @@ namespace Business.Concrete
         public FooterManager(IFooterDal footerDal)
         {
             _footerDal = footerDal;
+
         }
+
+        public IResult Add(FooterUpdateDto footerUpdateDto)
+        {
+
+            Footer footer = new Footer
+            {
+
+                Body = footerUpdateDto.Body,
+                Link = footerUpdateDto.Link,
+
+
+            };
+
+            _footerDal.Add(footer);
+
+            return new SuccessResult();
+        }
+
+        public IResult Delete(int id)
+        {
+            var getResult = _footerDal.Get(s => s.Id == id);
+            if (getResult == null)
+            {
+                return new ErrorResult("Data Bulunamadı");
+            }
+
+            _footerDal.Delete(getResult);
+
+            var secondGetResult = _footerDal.Get(s => s.Id == id);
+
+            if (secondGetResult == null)
+            {
+                return new SuccessResult();
+
+            }
+            return new ErrorResult();
+
+        }
+
         public IDataResult<List<Footer>> GetAll()
         {
             var result = _footerDal.GetAll();
@@ -37,5 +78,22 @@ namespace Business.Concrete
 
 
         }
+
+        public IResult Update(FooterUpdateDto footerUpdateDto)
+        {
+            var getResult = _footerDal.Get(s => s.Id == footerUpdateDto.Id);
+            if (getResult == null)
+            {
+                return new ErrorResult("Data Bulunamadı");
+            }
+
+            getResult.Body = footerUpdateDto.Body != null ? footerUpdateDto.Body : getResult.Body;
+            getResult.Link = footerUpdateDto.Link != null ? footerUpdateDto.Link : getResult.Link;
+
+            _footerDal.Update(getResult);
+
+            return new SuccessResult();
+        }
+
     }
 }

@@ -58,6 +58,7 @@ namespace WebAPI.Controllers
 
         [HttpPost("validate")]
         public ActionResult Validate()
+        
         {
             
             var result = _authService.Validate();

@@ -3,7 +3,9 @@ using Business.Constants;
 using Core.Utilities.Results.Abstract;
 using Core.Utilities.Results.Concrete;
 using DataAccess.Abstract;
+using DataAccess.Concrete.EntityFramework;
 using Entities.Concrete;
+using Entities.DTOs;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,6 +22,45 @@ namespace Business.Concrete
         {
             _blogDal = blogDal;
         }
+
+        public IResult Add(BlogUpdateDto blogUpdateDto)
+        {
+
+            Blog blog = new Blog
+            {
+                Title = blogUpdateDto.Title,
+                Body = blogUpdateDto.Body,
+                Speaker= blogUpdateDto.Speaker,
+                Date = blogUpdateDto.Date,
+
+            };
+
+            _blogDal.Add(blog);
+
+            return new SuccessResult();
+        }
+
+        public IResult Delete(int id)
+        {
+            var getResult = _blogDal.Get(s => s.Id == id);
+            if (getResult == null)
+            {
+                return new ErrorResult("Data Bulunamadı");
+            }
+
+            _blogDal.Delete(getResult);
+
+            var secondGetResult = _blogDal.Get(s => s.Id == id);
+
+            if (secondGetResult == null)
+            {
+                return new SuccessResult();
+
+            }
+            return new ErrorResult();
+
+        }
+
         public IDataResult<List<Blog>> GetAll()
         {
             var result = _blogDal.GetAll();
@@ -35,5 +76,24 @@ namespace Business.Concrete
 
 
         }
+
+        public IResult Update(BlogUpdateDto blogUpdateDto)
+        {
+            var getResult = _blogDal.Get(s => s.Id == blogUpdateDto.Id);
+            if (getResult == null)
+            {
+                return new ErrorResult("Data Bulunamadı");
+            }
+
+            getResult.Title = blogUpdateDto.Title != null ? blogUpdateDto.Title : getResult.Title;
+            getResult.Body = blogUpdateDto.Body != null ? blogUpdateDto.Body : getResult.Body;
+            getResult.Date = blogUpdateDto.Date != null ? blogUpdateDto.Date : getResult.Date;
+            getResult.Speaker = blogUpdateDto.Speaker != null ? blogUpdateDto.Speaker : getResult.Speaker;
+
+            _blogDal.Update(getResult);
+
+            return new SuccessResult();
+        }
+
     }
 }

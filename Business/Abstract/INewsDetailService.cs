@@ -1,5 +1,6 @@
 ﻿using Core.Utilities.Results.Abstract;
 using Entities.Concrete;
+using Entities.DTOs;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,5 +13,8 @@ namespace Business.Abstract
     {
         IDataResult<List<NewsDetail>> GetAll();
         IDataResult<NewsDetail> Get(int id);
+        IResult Delete(int id);
+        IResult Update(NewsDetailUpdateDto newsDetailUpdateDto);
+        IResult Add(NewsDetailUpdateDto newsDetailUpdateDto);
     }
 }
