@@ -1,4 +1,5 @@
 ﻿using Business.Abstract;
+using Business.BusinessAspects.Autofac;
 using Business.Constants;
 using Core.Utilities.Results.Abstract;
 using Core.Utilities.Results.Concrete;
@@ -23,7 +24,7 @@ namespace Business.Concrete
             _newsDal = newsDal;
         }
 
-
+        [SecuredOperation("superAdmin,admin")]
         public IResult Add(NewsUpdateDto newsUpdateDto)
         {
 
@@ -43,7 +44,7 @@ namespace Business.Concrete
             return new SuccessResult();
         }
 
-
+        [SecuredOperation("superAdmin,admin")]
         public IResult Delete(int id)
         {
             var getResult = _newsDal.Get(s => s.Id == id);
@@ -80,6 +81,7 @@ namespace Business.Concrete
 
 
         }
+        [SecuredOperation("superAdmin,admin")]
         public IResult Update(NewsUpdateDto newsUpdateDto)
         {
             var getResult = _newsDal.Get(s => s.Id == newsUpdateDto.Id);

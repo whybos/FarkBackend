@@ -24,7 +24,7 @@ namespace Business.Concrete
             _footerDal = footerDal;
 
         }
-
+        [SecuredOperation("superAdmin,admin")]
         public IResult Add(FooterUpdateDto footerUpdateDto)
         {
 
@@ -41,7 +41,7 @@ namespace Business.Concrete
 
             return new SuccessResult();
         }
-
+        [SecuredOperation("superAdmin,admin")]
         public IResult Delete(int id)
         {
             var getResult = _footerDal.Get(s => s.Id == id);
@@ -78,7 +78,7 @@ namespace Business.Concrete
 
 
         }
-
+        [SecuredOperation("superAdmin,admin")]
         public IResult Update(FooterUpdateDto footerUpdateDto)
         {
             var getResult = _footerDal.Get(s => s.Id == footerUpdateDto.Id);

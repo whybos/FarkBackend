@@ -1,4 +1,5 @@
 ﻿using Business.Abstract;
+using Business.BusinessAspects.Autofac;
 using Business.Constants;
 using Core.Utilities.Results.Abstract;
 using Core.Utilities.Results.Concrete;
@@ -24,7 +25,7 @@ namespace Business.Concrete
         {
             _aboutUsDal = aboutUsDal;
         }
-
+        [SecuredOperation("superAdmin,admin")]
         public IResult Add(AboutUsUpdateDto aboutUsUpdateDto)
         {
 
@@ -41,7 +42,7 @@ namespace Business.Concrete
 
             return new SuccessResult();
         }
-
+        [SecuredOperation("superAdmin,admin")]
         public IResult Delete(int id)
         {
             var getResult = _aboutUsDal.Get(s => s.Id == id);
@@ -78,7 +79,7 @@ namespace Business.Concrete
 
 
         }
-
+        [SecuredOperation("superAdmin,admin")]
         public IResult Update(AboutUsUpdateDto aboutUsUpdateDto)
         {
             var getResult = _aboutUsDal.Get(s => s.Id == aboutUsUpdateDto.Id);
