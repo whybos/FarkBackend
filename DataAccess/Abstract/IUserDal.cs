@@ -13,5 +13,6 @@ namespace DataAccess.Abstract
     {
         List<OperationClaim> GetClaims(User user);
         List<UserDetailDto> GetUserDetails();
+        void AddRoleToUser(int userId, string roleName);
     }
 }

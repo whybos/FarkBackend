@@ -17,5 +17,9 @@ namespace Business.Abstract
         IDataResult<List<User>> GetAll();
         IDataResult<List<UserDetailDto>> GetUserDetails();
         IDataResult<User> GetByMail(string email);
+        IDataResult<User> GetById(int id);
+        IResult AddRoleToUser(int userId, string roleName);
+        IResult Delete(int userId);
+
     }
 }

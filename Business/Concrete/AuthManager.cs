@@ -25,11 +25,13 @@ namespace Business.Concrete
             _userService = userService;
             _tokenHelper = tokenHelper;
         }
-        [SecuredOperation("superAdmin")]
+
+        
         public IDataResult<User> Register(UserForRegisterDto userForRegisterDto, string password)
         {
             byte[] passwordHash, passwordSalt;
             HashingHelper.CreatePasswordHash(password, out passwordHash, out passwordSalt);
+
             var user = new User
             {
                 Email = userForRegisterDto.Email,
@@ -37,10 +39,33 @@ namespace Business.Concrete
                 LastName = userForRegisterDto.LastName,
                 PasswordHash = passwordHash,
                 PasswordSalt = passwordSalt,
-                Status = false
+                Status = true // kullanıcı aktif olsun
             };
+
+            // Kullanıcıyı ekle
             _userService.Add(user);
+
+            // Super admin eklediği için admin rolünü ata
+            _userService.AddRoleToUser(user.Id, "admin");
+
             return new SuccessDataResult<User>(user, Messages.UserRegistered);
+        }
+
+        [SecuredOperation("superAdmin")]
+        public IResult Update(User userForRegisterDto, string password)
+        {
+            var getResult = _userService.GetById(userForRegisterDto.Id);
+
+            if (getResult == null)
+            {
+                return new ErrorResult("Data Bulunamadı");
+            }
+
+            getResult.Data.Email = userForRegisterDto.Email != null ? userForRegisterDto.Email : getResult.Data.Email;
+
+            _userService.Update(getResult.Data);
+
+            return new SuccessResult();
         }
 
         public IDataResult<User> Login(UserForLoginDto userForLoginDto)

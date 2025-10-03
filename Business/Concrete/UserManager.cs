@@ -56,5 +56,37 @@ namespace Business.Concrete
             _userDal.Update(userToUpdate);
             return new SuccessResult(Messages.Updated);
         }
+
+        public IDataResult<User> GetById(int id)
+        {
+            var user = _userDal.Get(u => u.Id == id);
+
+            if (user != null)
+            {
+                return new SuccessDataResult<User>(user);
+            }
+            return new ErrorDataResult<User>();
+        }
+
+        public IResult AddRoleToUser(int userId, string roleName)
+        {
+            var user = _userDal.Get(u => u.Id == userId);
+            if (user == null) return new ErrorResult("Kullanıcı bulunamadı");
+
+            _userDal.AddRoleToUser(userId, roleName); // UserRoles tablosuna ekleme yap
+
+            return new SuccessResult("Rol başarıyla eklendi");
+        }
+
+        public IResult Delete(int userId)
+        {
+            var userToDelete = _userDal.Get(u => u.Id == userId);
+            if (userToDelete == null)
+                return new ErrorResult("Kullanıcı bulunamadı");
+
+            _userDal.Delete(userToDelete);
+            return new SuccessResult("Kullanıcı silindi");
+        }
+
     }
 }

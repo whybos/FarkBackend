@@ -49,5 +49,35 @@ namespace DataAccess.Concrete.EntityFramework
                 return result.ToList();
             }
         }
+        public void AddRoleToUser(int userId, string roleName)
+        {
+            using (var context = new MyDatabaseContext(_dbContextOptions))
+            {
+                // Rolü bul, yoksa ekle
+                var claim = context.OperationClaims.SingleOrDefault(c => c.Name == roleName);
+                if (claim == null)
+                {
+                    claim = new OperationClaim { Name = roleName };
+                    context.OperationClaims.Add(claim);
+                    context.SaveChanges();
+                }
+
+                // Kullanıcıya rol ekle, tekrar eklenmesin
+                var exists = context.UserOperationClaims
+                    .Any(uoc => uoc.UserId == userId && uoc.OperationClaimId == claim.Id);
+
+                if (!exists)
+                {
+                    context.UserOperationClaims.Add(new UserOperationClaim
+                    {
+                        UserId = userId,
+                        OperationClaimId = claim.Id
+                    });
+                    context.SaveChanges();
+                }
+            }
+        }
+
+
     }
 }

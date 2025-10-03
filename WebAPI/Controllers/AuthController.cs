@@ -1,7 +1,6 @@
 ﻿using Business.Abstract;
 using Business.BusinessAspects.Autofac;
 using Entities.DTOs;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WebAPI.Controllers
@@ -10,11 +9,13 @@ namespace WebAPI.Controllers
     [ApiController]
     public class AuthController : ControllerBase
     {
-        private IAuthService _authService;
+        private readonly IAuthService _authService;
+        private readonly IUserService _userService;
 
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService authService, IUserService userService)
         {
             _authService = authService;
+            _userService = userService;
         }
 
         [HttpPost("login")]
@@ -22,55 +23,58 @@ namespace WebAPI.Controllers
         {
             var userToLogin = _authService.Login(userForLoginDto);
             if (!userToLogin.Success)
-            {
                 return BadRequest(userToLogin.Message);
-            }
 
             var result = _authService.CreateAccessToken(userToLogin.Data);
             if (result.Success)
-            {
                 return Ok(result);
-            }
 
             return BadRequest(result.Message);
         }
 
-        
         [HttpPost("register")]
         public ActionResult Register(UserForRegisterDto userForRegisterDto)
         {
             var userExists = _authService.UserExists(userForRegisterDto.Email);
             if (!userExists.Success)
-            {
                 return BadRequest(userExists.Message);
-            }
 
             var registerResult = _authService.Register(userForRegisterDto, userForRegisterDto.Password);
             var result = _authService.CreateAccessToken(registerResult.Data);
             if (result.Success)
-            {
                 return Ok(result);
-            }
 
             return BadRequest(result.Message);
         }
 
-
         [HttpPost("validate")]
         public ActionResult Validate()
-        
         {
-            
             var result = _authService.Validate();
-
             if (result.Success)
-            {
                 return Ok(result);
-            }
             return BadRequest(result);
         }
 
+        [HttpGet("getAll")]
+        [SecuredOperation("superAdmin")]
+        public IActionResult GetAll()
+        {
+            var result = _userService.GetAll();
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
 
+        [HttpDelete("delete/{id}")]
+        [SecuredOperation("superAdmin")] // sadece super admin
+        public IActionResult Delete(int id)
+        {
+            var result = _userService.Delete(id);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
 
     }
 }
