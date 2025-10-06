@@ -57,7 +57,7 @@ namespace WebAPI.Controllers
         }
 
         [HttpGet("getAll")]
-        [SecuredOperation("superAdmin")]
+       
         public IActionResult GetAll()
         {
             var result = _userService.GetAll();
@@ -67,7 +67,7 @@ namespace WebAPI.Controllers
         }
 
         [HttpDelete("delete/{id}")]
-        [SecuredOperation("superAdmin")] // sadece super admin
+      
         public IActionResult Delete(int id)
         {
             var result = _userService.Delete(id);

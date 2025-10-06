@@ -1,4 +1,5 @@
 ﻿using Business.Abstract;
+using Business.BusinessAspects.Autofac;
 using Business.Constants;
 using Core.Entities.Concrete;
 using Core.Utilities.Results.Abstract;
@@ -32,7 +33,7 @@ namespace Business.Concrete
             _userDal.Add(user);
             return new SuccessResult(Messages.Added);
         }
-
+        [SecuredOperation("superAdmin")]
         public IDataResult<List<User>> GetAll()
         {
             return new SuccessDataResult<List<User>>(_userDal.GetAll());
@@ -77,7 +78,7 @@ namespace Business.Concrete
 
             return new SuccessResult("Rol başarıyla eklendi");
         }
-
+        [SecuredOperation("superAdmin")]
         public IResult Delete(int userId)
         {
             var userToDelete = _userDal.Get(u => u.Id == userId);

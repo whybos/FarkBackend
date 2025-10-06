@@ -26,7 +26,7 @@ namespace Business.Concrete
             _tokenHelper = tokenHelper;
         }
 
-        
+        [SecuredOperation("superAdmin")]
         public IDataResult<User> Register(UserForRegisterDto userForRegisterDto, string password)
         {
             byte[] passwordHash, passwordSalt;
