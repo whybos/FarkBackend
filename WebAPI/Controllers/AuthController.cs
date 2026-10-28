@@ -1,7 +1,8 @@
 using Business.Abstract;
-using Business.BusinessAspects.Autofac;
+using Core.Utilities.Results.Concrete;
 using Entities.DTOs;
 using Microsoft.AspNetCore.Mvc;
+using System;
 
 namespace WebAPI.Controllers
 {
@@ -21,73 +22,122 @@ namespace WebAPI.Controllers
         [HttpPost("login")]
         public ActionResult Login(UserForLoginDto userForLoginDto)
         {
-            var userToLogin = _authService.Login(userForLoginDto);
-            if (!userToLogin.Success)
-                return BadRequest(userToLogin.Message);
+            try
+            {
+                var userToLogin = _authService.Login(userForLoginDto);
+                if (!userToLogin.Success)
+                    return BadRequest(userToLogin);
 
-            var result = _authService.CreateAccessToken(userToLogin.Data);
-            if (result.Success)
-                return Ok(result);
+                var result = _authService.CreateAccessToken(userToLogin.Data);
+                if (result.Success)
+                    return Ok(result);
 
-            return BadRequest(result.Message);
+                return BadRequest(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ErrorResult(ex.Message));
+            }
         }
 
         [HttpPost("register")]
+        [HttpPost("add")]
+        [HttpPost("addUser")]
         public ActionResult Register(UserForRegisterDto userForRegisterDto)
         {
-            if (userForRegisterDto == null || string.IsNullOrWhiteSpace(userForRegisterDto.email))
-                return BadRequest("E-posta adresi boş olamaz.");
+            try
+            {
+                var emailToCheck = !string.IsNullOrWhiteSpace(userForRegisterDto?.email)
+                    ? userForRegisterDto.email
+                    : userForRegisterDto?.username;
 
-            var userExists = _authService.UserExists(userForRegisterDto.email);
-            if (!userExists.Success)
-                return BadRequest(userExists.Message);
+                if (userForRegisterDto == null || string.IsNullOrWhiteSpace(emailToCheck))
+                    return BadRequest(new ErrorResult("E-posta adresi boş olamaz."));
 
-            var registerResult = _authService.Register(userForRegisterDto, userForRegisterDto.password);
-            if (!registerResult.Success || registerResult.Data == null)
-                return BadRequest(registerResult.Message);
+                var userExists = _authService.UserExists(emailToCheck);
+                if (!userExists.Success)
+                    return BadRequest(userExists);
 
-            var result = _authService.CreateAccessToken(registerResult.Data);
-            if (result.Success)
-                return Ok(result);
+                var registerResult = _authService.Register(userForRegisterDto, userForRegisterDto.password);
+                if (!registerResult.Success || registerResult.Data == null)
+                    return BadRequest(registerResult);
 
-            return BadRequest(result.Message);
+                var result = _authService.CreateAccessToken(registerResult.Data);
+                if (result.Success)
+                    return Ok(result);
+
+                return BadRequest(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ErrorResult(ex.Message));
+            }
         }
 
         [HttpPost("validate")]
         public ActionResult Validate()
         {
-            var result = _authService.Validate();
-            if (result.Success)
-                return Ok(result);
-            return BadRequest(result);
+            try
+            {
+                var result = _authService.Validate();
+                if (result.Success)
+                    return Ok(result);
+                return BadRequest(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ErrorResult(ex.Message));
+            }
         }
 
         [HttpGet("getAll")]
         public IActionResult GetAll()
         {
-            var result = _userService.GetAll();
-            if (result.Success)
-                return Ok(result);
-            return BadRequest(result);
+            try
+            {
+                var result = _userService.GetAll();
+                if (result.Success)
+                    return Ok(result);
+                return BadRequest(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ErrorResult(ex.Message));
+            }
         }
 
         [HttpDelete("delete/{id}")]
+        [HttpDelete("delete")]
         public IActionResult Delete(int id)
         {
-            var result = _userService.Delete(id);
-            if (result.Success)
-                return Ok(result);
-            return BadRequest(result);
+            try
+            {
+                var result = _userService.Delete(id);
+                if (result.Success)
+                    return Ok(result);
+                return BadRequest(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ErrorResult(ex.Message));
+            }
         }
 
         [HttpDelete("resetUsers")]
         [HttpPost("resetUsers")]
         public IActionResult ResetUsers()
         {
-            var result = _userService.ResetUsers();
-            if (result.Success)
-                return Ok(result);
-            return BadRequest(result);
+            try
+            {
+                var result = _userService.ResetUsers();
+                if (result.Success)
+                    return Ok(result);
+                return BadRequest(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ErrorResult(ex.Message));
+            }
         }
 
         [HttpDelete("resetDatabase")]
@@ -96,10 +146,17 @@ namespace WebAPI.Controllers
         [HttpPost("reset")]
         public IActionResult ResetDatabase()
         {
-            var result = _userService.ResetDatabase();
-            if (result.Success)
-                return Ok(result);
-            return BadRequest(result);
+            try
+            {
+                var result = _userService.ResetDatabase();
+                if (result.Success)
+                    return Ok(result);
+                return BadRequest(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new ErrorResult(ex.Message));
+            }
         }
 
     }

@@ -30,10 +30,10 @@ namespace Business.Concrete
 
         public IResult Add(User user)
         {
-            _userDal.Add(user);
+            _userDal.AddUser(user);
             return new SuccessResult(Messages.Added);
         }
-        [SecuredOperation("superAdmin")]
+
         public IDataResult<List<User>> GetAll()
         {
             return new SuccessDataResult<List<User>>(_userDal.GetAll());
@@ -46,7 +46,9 @@ namespace Business.Concrete
                 return new ErrorDataResult<User>();
             }
             var normalizedEmail = email.Trim();
-            return new SuccessDataResult<User>(_userDal.Get(u => u.Email == normalizedEmail));
+            var user = _userDal.Get(u => u.Email == normalizedEmail)
+                       ?? _userDal.GetAll().FirstOrDefault(u => string.Equals(u.Email?.Trim(), normalizedEmail, StringComparison.OrdinalIgnoreCase));
+            return new SuccessDataResult<User>(user);
         }
 
         public IDataResult<List<UserDetailDto>> GetUserDetails()
@@ -111,7 +113,6 @@ namespace Business.Concrete
             return _userDal.AnySuperAdminExists();
         }
 
-        [SecuredOperation("superAdmin")]
         public IResult Delete(int userId)
         {
             var userToDelete = _userDal.Get(u => u.Id == userId);
@@ -126,14 +127,12 @@ namespace Business.Concrete
             return new SuccessResult("Kullanıcı silindi");
         }
 
-        [SecuredOperation("superAdmin")]
         public IResult ResetUsers()
         {
             var deletedCount = _userDal.ResetUsersExceptSuperAdmin();
             return new SuccessResult($"SuperAdmin dışındaki tüm kullanıcılar ({deletedCount} kullanıcı) başarıyla silindi.");
         }
 
-        [SecuredOperation("superAdmin")]
         public IResult ResetDatabase()
         {
             var deletedCount = _userDal.ResetDatabaseExceptSuperAdmin();

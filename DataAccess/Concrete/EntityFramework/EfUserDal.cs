@@ -49,33 +49,135 @@ namespace DataAccess.Concrete.EntityFramework
                 return result.ToList();
             }
         }
-        public void AddRoleToUser(int userId, string roleName)
+        public User AddUser(User user)
         {
             using (var context = new MyDatabaseContext(_dbContextOptions))
             {
-                var normalizedRole = (roleName ?? "admin").Trim();
-                var claim = context.OperationClaims
-                    .AsEnumerable()
-                    .FirstOrDefault(c => string.Equals(c.Name?.Trim(), normalizedRole, StringComparison.OrdinalIgnoreCase));
+                SyncUserTableSequences(context);
+
+                try
+                {
+                    user.Id = 0;
+                    context.Users.Add(user);
+                    context.SaveChanges();
+                    return user;
+                }
+                catch
+                {
+                    // Eğer PostgreSQL'de Users.Id kolonu SERIAL/IDENTITY değilse veya sequence kaymışsa manuel Id ata
+                }
+            }
+
+            using (var fallbackContext = new MyDatabaseContext(_dbContextOptions))
+            {
+                var nextId = (fallbackContext.Users.AsNoTracking().Select(u => (int?)u.Id).Max() ?? 0) + 1;
+                user.Id = nextId;
+                fallbackContext.Users.Add(user);
+                fallbackContext.SaveChanges();
+                return user;
+            }
+        }
+
+        private void SyncUserTableSequences(MyDatabaseContext context)
+        {
+            try
+            {
+                context.Database.ExecuteSqlRaw(@"
+                    SELECT setval(pg_get_serial_sequence('""Users""', 'Id'), COALESCE((SELECT MAX(""Id"") FROM ""Users""), 0) + 1, false);
+                ");
+            }
+            catch { }
+
+            try
+            {
+                context.Database.ExecuteSqlRaw(@"
+                    SELECT setval(pg_get_serial_sequence('""OperationClaims""', 'Id'), COALESCE((SELECT MAX(""Id"") FROM ""OperationClaims""), 0) + 1, false);
+                ");
+            }
+            catch { }
+
+            try
+            {
+                context.Database.ExecuteSqlRaw(@"
+                    SELECT setval(pg_get_serial_sequence('""UserOperationClaims""', 'Id'), COALESCE((SELECT MAX(""Id"") FROM ""UserOperationClaims""), 0) + 1, false);
+                ");
+            }
+            catch { }
+        }
+
+        public void AddRoleToUser(int userId, string roleName)
+        {
+            var normalizedRole = (roleName ?? "admin").Trim();
+            OperationClaim claim = null;
+
+            using (var context = new MyDatabaseContext(_dbContextOptions))
+            {
+                SyncUserTableSequences(context);
+
+                var allClaims = context.OperationClaims.AsNoTracking().ToList();
+                claim = allClaims.FirstOrDefault(c => string.Equals(c.Name?.Trim(), normalizedRole, StringComparison.OrdinalIgnoreCase));
 
                 if (claim == null)
                 {
-                    claim = new OperationClaim { Name = normalizedRole };
-                    context.OperationClaims.Add(claim);
-                    context.SaveChanges();
+                    try
+                    {
+                        var newClaim = new OperationClaim { Name = normalizedRole };
+                        context.OperationClaims.Add(newClaim);
+                        context.SaveChanges();
+                        claim = newClaim;
+                    }
+                    catch
+                    {
+                        using (var fallbackContext = new MyDatabaseContext(_dbContextOptions))
+                        {
+                            var nextClaimId = (fallbackContext.OperationClaims.AsNoTracking().Select(c => (int?)c.Id).Max() ?? 0) + 1;
+                            var newClaim = new OperationClaim { Id = nextClaimId, Name = normalizedRole };
+                            fallbackContext.OperationClaims.Add(newClaim);
+                            fallbackContext.SaveChanges();
+                            claim = newClaim;
+                        }
+                    }
                 }
+            }
 
+            if (claim == null || userId <= 0)
+            {
+                return;
+            }
+
+            using (var context = new MyDatabaseContext(_dbContextOptions))
+            {
                 var exists = context.UserOperationClaims
+                    .AsNoTracking()
                     .Any(uoc => uoc.UserId == userId && uoc.OperationClaimId == claim.Id);
 
                 if (!exists)
                 {
-                    context.UserOperationClaims.Add(new UserOperationClaim
+                    try
                     {
-                        UserId = userId,
-                        OperationClaimId = claim.Id
-                    });
-                    context.SaveChanges();
+                        var userClaim = new UserOperationClaim
+                        {
+                            UserId = userId,
+                            OperationClaimId = claim.Id
+                        };
+                        context.UserOperationClaims.Add(userClaim);
+                        context.SaveChanges();
+                    }
+                    catch
+                    {
+                        using (var fallbackContext = new MyDatabaseContext(_dbContextOptions))
+                        {
+                            var nextUocId = (fallbackContext.UserOperationClaims.AsNoTracking().Select(uoc => (int?)uoc.Id).Max() ?? 0) + 1;
+                            var userClaim = new UserOperationClaim
+                            {
+                                Id = nextUocId,
+                                UserId = userId,
+                                OperationClaimId = claim.Id
+                            };
+                            fallbackContext.UserOperationClaims.Add(userClaim);
+                            fallbackContext.SaveChanges();
+                        }
+                    }
                 }
             }
         }
@@ -84,15 +186,13 @@ namespace DataAccess.Concrete.EntityFramework
         {
             using (var context = new MyDatabaseContext(_dbContextOptions))
             {
-                var claims = from operationClaim in context.OperationClaims
-                             join userOperationClaim in context.UserOperationClaims
-                                 on operationClaim.Id equals userOperationClaim.OperationClaimId
-                             where userOperationClaim.UserId == userId
-                             select operationClaim.Name;
+                var claims = (from operationClaim in context.OperationClaims
+                              join userOperationClaim in context.UserOperationClaims
+                                  on operationClaim.Id equals userOperationClaim.OperationClaimId
+                              where userOperationClaim.UserId == userId
+                              select operationClaim.Name).ToList();
 
-                return claims
-                    .AsEnumerable()
-                    .Any(name => string.Equals(name?.Trim(), "superAdmin", StringComparison.OrdinalIgnoreCase));
+                return claims.Any(name => string.Equals(name?.Trim(), "superAdmin", StringComparison.OrdinalIgnoreCase));
             }
         }
 
@@ -101,7 +201,8 @@ namespace DataAccess.Concrete.EntityFramework
             using (var context = new MyDatabaseContext(_dbContextOptions))
             {
                 var superAdminClaims = context.OperationClaims
-                    .AsEnumerable()
+                    .AsNoTracking()
+                    .ToList()
                     .Where(c => string.Equals(c.Name?.Trim(), "superAdmin", StringComparison.OrdinalIgnoreCase))
                     .Select(c => c.Id)
                     .ToList();
@@ -111,9 +212,12 @@ namespace DataAccess.Concrete.EntityFramework
                     return false;
                 }
 
-                return context.UserOperationClaims.Any(uoc =>
+                var allUserIds = context.Users.AsNoTracking().Select(u => u.Id).ToList();
+                var allUserClaims = context.UserOperationClaims.AsNoTracking().ToList();
+
+                return allUserClaims.Any(uoc =>
                     superAdminClaims.Contains(uoc.OperationClaimId) &&
-                    context.Users.Any(u => u.Id == uoc.UserId));
+                    allUserIds.Contains(uoc.UserId));
             }
         }
 

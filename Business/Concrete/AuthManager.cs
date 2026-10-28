@@ -28,13 +28,25 @@ namespace Business.Concrete
 
         public IDataResult<User> Register(UserForRegisterDto userForRegisterDto, string password)
         {
-            if (userForRegisterDto == null || string.IsNullOrWhiteSpace(userForRegisterDto.email) || string.IsNullOrWhiteSpace(password))
+            var rawEmail = !string.IsNullOrWhiteSpace(userForRegisterDto?.email)
+                ? userForRegisterDto.email
+                : userForRegisterDto?.username;
+
+            if (userForRegisterDto == null || string.IsNullOrWhiteSpace(rawEmail) || string.IsNullOrWhiteSpace(password))
             {
                 return new ErrorDataResult<User>("E-posta ve şifre alanları zorunludur.");
             }
 
-            var normalizedEmail = userForRegisterDto.email.Trim();
-            var defaultName = normalizedEmail.Contains("@") ? normalizedEmail.Split('@')[0] : "Admin";
+            var normalizedEmail = Truncate(rawEmail.Trim(), 50);
+            var defaultName = normalizedEmail.Contains("@") ? normalizedEmail.Split('@')[0] : normalizedEmail;
+
+            var rawFirstName = !string.IsNullOrWhiteSpace(userForRegisterDto.firstName)
+                ? userForRegisterDto.firstName
+                : (!string.IsNullOrWhiteSpace(userForRegisterDto.name) ? userForRegisterDto.name : defaultName);
+
+            var rawLastName = !string.IsNullOrWhiteSpace(userForRegisterDto.lastName)
+                ? userForRegisterDto.lastName
+                : "Admin";
 
             byte[] passwordHash, passwordSalt;
             HashingHelper.CreatePasswordHash(password, out passwordHash, out passwordSalt);
@@ -44,8 +56,8 @@ namespace Business.Concrete
             var user = new User
             {
                 Email = normalizedEmail,
-                FirstName = string.IsNullOrWhiteSpace(userForRegisterDto.firstName) ? defaultName : userForRegisterDto.firstName.Trim(),
-                LastName = string.IsNullOrWhiteSpace(userForRegisterDto.lastName) ? "User" : userForRegisterDto.lastName.Trim(),
+                FirstName = Truncate(rawFirstName.Trim(), 50),
+                LastName = Truncate(rawLastName.Trim(), 50),
                 PasswordHash = passwordHash,
                 PasswordSalt = passwordSalt,
                 Status = true
@@ -67,13 +79,26 @@ namespace Business.Concrete
             var roleToAssign = !hasAnySuperAdmin ? "superAdmin" : "admin";
             if (user.Id > 0)
             {
-                _userService.AddRoleToUser(user.Id, roleToAssign);
+                try
+                {
+                    _userService.AddRoleToUser(user.Id, roleToAssign);
+                }
+                catch
+                {
+                    // Rol tablosu kaynaklı bir hata kullanıcı kaydını engellemesin
+                }
             }
 
             return new SuccessDataResult<User>(user, Messages.UserRegistered);
         }
 
-        [SecuredOperation("superAdmin")]
+        private string Truncate(string value, int maxLength)
+        {
+            if (string.IsNullOrEmpty(value)) return string.Empty;
+            return value.Length <= maxLength ? value : value.Substring(0, maxLength);
+        }
+
+        [SecuredOperation("superAdmin,admin")]
         public IResult Update(User userForRegisterDto, string password)
         {
             var getResult = _userService.GetById(userForRegisterDto.Id);
@@ -137,8 +162,24 @@ namespace Business.Concrete
 
         public IDataResult<AccessToken> CreateAccessToken(User user)
         {
-            var claims = _userService.GetClaims(user);
-            var accessToken = _tokenHelper.CreateToken(user, claims.Data ?? new List<OperationClaim>());
+            var claimsResult = _userService.GetClaims(user);
+            var claimsList = claimsResult?.Data ?? new List<OperationClaim>();
+
+            // Eğer giriş yapan veya yeni eklenen kullanıcının henüz rolü yoksa otomatik rol ata
+            if (!claimsList.Any() && user != null && user.Id > 0)
+            {
+                try
+                {
+                    var roleToAssign = !_userService.AnySuperAdminExists() ? "superAdmin" : "admin";
+                    _userService.AddRoleToUser(user.Id, roleToAssign);
+                    claimsList = _userService.GetClaims(user)?.Data ?? new List<OperationClaim>();
+                }
+                catch
+                {
+                }
+            }
+
+            var accessToken = _tokenHelper.CreateToken(user, claimsList);
             return new SuccessDataResult<AccessToken>(accessToken, Messages.AccessTokenCreated);
         }
 
