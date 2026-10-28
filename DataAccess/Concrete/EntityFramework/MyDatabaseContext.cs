@@ -1,4 +1,4 @@
-﻿using Entities.Concrete;
+using Entities.Concrete;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -29,6 +29,7 @@ namespace DataAccess.Concrete.EntityFramework
         public DbSet<Slider> Slider { get; set; }
         public DbSet<Footer> Footer { get; set; }
         public DbSet<FormsActive> FormsActive { get; set; }
+        public DbSet<Farkinda> Farkinda { get; set; }
 
     }
 }

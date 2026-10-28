@@ -1,4 +1,4 @@
-﻿using Business.Abstract;
+using Business.Abstract;
 using Business.BusinessAspects.Autofac;
 using Business.Constants;
 using Core.Utilities.Results.Abstract;
@@ -82,7 +82,9 @@ namespace Business.Concrete
         [SecuredOperation("superAdmin,admin")]
         public IResult Update(AboutUsUpdateDto aboutUsUpdateDto)
         {
-            var getResult = _aboutUsDal.Get(s => s.Id == aboutUsUpdateDto.Id);
+            var getResult = aboutUsUpdateDto.Id > 0
+                ? _aboutUsDal.Get(s => s.Id == aboutUsUpdateDto.Id)
+                : _aboutUsDal.GetAll().FirstOrDefault();
             if (getResult == null)
             {
                 return new ErrorResult("Data Bulunamadı");

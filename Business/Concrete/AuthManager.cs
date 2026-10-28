@@ -1,4 +1,4 @@
-﻿using Business.Abstract;
+using Business.Abstract;
 using Business.BusinessAspects.Autofac;
 using Business.Constants;
 using Core.Entities.Concrete;
@@ -26,27 +26,49 @@ namespace Business.Concrete
             _tokenHelper = tokenHelper;
         }
 
-        [SecuredOperation("superAdmin")]
         public IDataResult<User> Register(UserForRegisterDto userForRegisterDto, string password)
         {
+            if (userForRegisterDto == null || string.IsNullOrWhiteSpace(userForRegisterDto.email) || string.IsNullOrWhiteSpace(password))
+            {
+                return new ErrorDataResult<User>("E-posta ve şifre alanları zorunludur.");
+            }
+
+            var normalizedEmail = userForRegisterDto.email.Trim();
+            var defaultName = normalizedEmail.Contains("@") ? normalizedEmail.Split('@')[0] : "Admin";
+
             byte[] passwordHash, passwordSalt;
             HashingHelper.CreatePasswordHash(password, out passwordHash, out passwordSalt);
 
+            var hasAnySuperAdmin = _userService.AnySuperAdminExists();
+
             var user = new User
             {
-                Email = userForRegisterDto.email,
-                FirstName = userForRegisterDto.firstName,
-                LastName = userForRegisterDto.lastName,
+                Email = normalizedEmail,
+                FirstName = string.IsNullOrWhiteSpace(userForRegisterDto.firstName) ? defaultName : userForRegisterDto.firstName.Trim(),
+                LastName = string.IsNullOrWhiteSpace(userForRegisterDto.lastName) ? "User" : userForRegisterDto.lastName.Trim(),
                 PasswordHash = passwordHash,
                 PasswordSalt = passwordSalt,
-                Status = true // kullanıcı aktif olsun
+                Status = true
             };
 
-            // Kullanıcıyı ekle
             _userService.Add(user);
 
-            // Super admin eklediği için admin rolünü ata
-            _userService.AddRoleToUser(user.Id, "admin");
+            // EF Core Id ataması yapılmadıysa e-posta üzerinden kaydedilen kullanıcıyı çek
+            if (user.Id <= 0)
+            {
+                var createdUser = _userService.GetByMail(normalizedEmail)?.Data;
+                if (createdUser != null)
+                {
+                    user = createdUser;
+                }
+            }
+
+            // Eğer sistemde hiç superAdmin yoksa ilk eklenen kullanıcıyı superAdmin yap, varsa admin rolü ata
+            var roleToAssign = !hasAnySuperAdmin ? "superAdmin" : "admin";
+            if (user.Id > 0)
+            {
+                _userService.AddRoleToUser(user.Id, roleToAssign);
+            }
 
             return new SuccessDataResult<User>(user, Messages.UserRegistered);
         }
@@ -56,21 +78,36 @@ namespace Business.Concrete
         {
             var getResult = _userService.GetById(userForRegisterDto.Id);
 
-            if (getResult == null)
+            if (getResult == null || getResult.Data == null)
             {
                 return new ErrorResult("Data Bulunamadı");
             }
 
             getResult.Data.Email = userForRegisterDto.Email != null ? userForRegisterDto.Email : getResult.Data.Email;
+            getResult.Data.FirstName = userForRegisterDto.FirstName != null ? userForRegisterDto.FirstName : getResult.Data.FirstName;
+            getResult.Data.LastName = userForRegisterDto.LastName != null ? userForRegisterDto.LastName : getResult.Data.LastName;
+
+            if (!string.IsNullOrWhiteSpace(password))
+            {
+                byte[] passwordHash, passwordSalt;
+                HashingHelper.CreatePasswordHash(password, out passwordHash, out passwordSalt);
+                getResult.Data.PasswordHash = passwordHash;
+                getResult.Data.PasswordSalt = passwordSalt;
+            }
 
             _userService.Update(getResult.Data);
 
-            return new SuccessResult();
+            return new SuccessResult(Messages.Updated);
         }
 
         public IDataResult<User> Login(UserForLoginDto userForLoginDto)
         {
-            var userToCheck = _userService.GetByMail(userForLoginDto.Email).Data;
+            if (userForLoginDto == null || string.IsNullOrWhiteSpace(userForLoginDto.Email) || string.IsNullOrWhiteSpace(userForLoginDto.Password))
+            {
+                return new ErrorDataResult<User>(Messages.UserNotFound);
+            }
+
+            var userToCheck = _userService.GetByMail(userForLoginDto.Email.Trim()).Data;
             if (userToCheck == null)
             {
                 return new ErrorDataResult<User>(Messages.UserNotFound);
@@ -86,7 +123,12 @@ namespace Business.Concrete
 
         public IResult UserExists(string email)
         {
-            if (_userService.GetByMail(email).Data != null)
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return new ErrorResult("Geçersiz e-posta adresi");
+            }
+
+            if (_userService.GetByMail(email.Trim()).Data != null)
             {
                 return new ErrorResult(Messages.UserAlreadyExists);
             }
@@ -96,7 +138,7 @@ namespace Business.Concrete
         public IDataResult<AccessToken> CreateAccessToken(User user)
         {
             var claims = _userService.GetClaims(user);
-            var accessToken = _tokenHelper.CreateToken(user, claims.Data);
+            var accessToken = _tokenHelper.CreateToken(user, claims.Data ?? new List<OperationClaim>());
             return new SuccessDataResult<AccessToken>(accessToken, Messages.AccessTokenCreated);
         }
 

@@ -1,4 +1,4 @@
-﻿using Core.DataAccess;
+using Core.DataAccess;
 using Core.Entities.Concrete;
 using Entities.DTOs;
 using System;
@@ -14,5 +14,10 @@ namespace DataAccess.Abstract
         List<OperationClaim> GetClaims(User user);
         List<UserDetailDto> GetUserDetails();
         void AddRoleToUser(int userId, string roleName);
+        bool IsSuperAdmin(int userId);
+        bool AnySuperAdminExists();
+        void DeleteUserClaims(int userId);
+        int ResetUsersExceptSuperAdmin();
+        int ResetDatabaseExceptSuperAdmin();
     }
 }

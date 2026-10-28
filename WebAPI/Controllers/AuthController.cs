@@ -1,4 +1,4 @@
-﻿using Business.Abstract;
+using Business.Abstract;
 using Business.BusinessAspects.Autofac;
 using Entities.DTOs;
 using Microsoft.AspNetCore.Mvc;
@@ -35,11 +35,17 @@ namespace WebAPI.Controllers
         [HttpPost("register")]
         public ActionResult Register(UserForRegisterDto userForRegisterDto)
         {
+            if (userForRegisterDto == null || string.IsNullOrWhiteSpace(userForRegisterDto.email))
+                return BadRequest("E-posta adresi boş olamaz.");
+
             var userExists = _authService.UserExists(userForRegisterDto.email);
             if (!userExists.Success)
                 return BadRequest(userExists.Message);
 
             var registerResult = _authService.Register(userForRegisterDto, userForRegisterDto.password);
+            if (!registerResult.Success || registerResult.Data == null)
+                return BadRequest(registerResult.Message);
+
             var result = _authService.CreateAccessToken(registerResult.Data);
             if (result.Success)
                 return Ok(result);
@@ -57,7 +63,6 @@ namespace WebAPI.Controllers
         }
 
         [HttpGet("getAll")]
-       
         public IActionResult GetAll()
         {
             var result = _userService.GetAll();
@@ -67,10 +72,31 @@ namespace WebAPI.Controllers
         }
 
         [HttpDelete("delete/{id}")]
-      
         public IActionResult Delete(int id)
         {
             var result = _userService.Delete(id);
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
+
+        [HttpDelete("resetUsers")]
+        [HttpPost("resetUsers")]
+        public IActionResult ResetUsers()
+        {
+            var result = _userService.ResetUsers();
+            if (result.Success)
+                return Ok(result);
+            return BadRequest(result);
+        }
+
+        [HttpDelete("resetDatabase")]
+        [HttpPost("resetDatabase")]
+        [HttpDelete("reset")]
+        [HttpPost("reset")]
+        public IActionResult ResetDatabase()
+        {
+            var result = _userService.ResetDatabase();
             if (result.Success)
                 return Ok(result);
             return BadRequest(result);

@@ -1,4 +1,4 @@
-﻿using Business.Abstract;
+using Business.Abstract;
 using Business.BusinessAspects.Autofac;
 using Business.Constants;
 using Core.Entities.Concrete;
@@ -41,7 +41,12 @@ namespace Business.Concrete
 
         public IDataResult<User> GetByMail(string email)
         {
-            return new SuccessDataResult<User>(_userDal.Get(u => u.Email == email));
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return new ErrorDataResult<User>();
+            }
+            var normalizedEmail = email.Trim();
+            return new SuccessDataResult<User>(_userDal.Get(u => u.Email == normalizedEmail));
         }
 
         public IDataResult<List<UserDetailDto>> GetUserDetails()
@@ -53,7 +58,24 @@ namespace Business.Concrete
         public IResult Update(User user)
         {
             var userToUpdate = _userDal.Get(u => u.Id == user.Id);
+            if (userToUpdate == null)
+            {
+                return new ErrorResult("Kullanıcı bulunamadı");
+            }
+
+            userToUpdate.FirstName = user.FirstName ?? userToUpdate.FirstName;
+            userToUpdate.LastName = user.LastName ?? userToUpdate.LastName;
+            userToUpdate.Email = user.Email ?? userToUpdate.Email;
             userToUpdate.Status = user.Status;
+            if (user.PasswordHash != null && user.PasswordHash.Length > 0)
+            {
+                userToUpdate.PasswordHash = user.PasswordHash;
+            }
+            if (user.PasswordSalt != null && user.PasswordSalt.Length > 0)
+            {
+                userToUpdate.PasswordSalt = user.PasswordSalt;
+            }
+
             _userDal.Update(userToUpdate);
             return new SuccessResult(Messages.Updated);
         }
@@ -74,10 +96,21 @@ namespace Business.Concrete
             var user = _userDal.Get(u => u.Id == userId);
             if (user == null) return new ErrorResult("Kullanıcı bulunamadı");
 
-            _userDal.AddRoleToUser(userId, roleName); // UserRoles tablosuna ekleme yap
+            _userDal.AddRoleToUser(userId, roleName);
 
             return new SuccessResult("Rol başarıyla eklendi");
         }
+
+        public bool IsSuperAdmin(int userId)
+        {
+            return _userDal.IsSuperAdmin(userId);
+        }
+
+        public bool AnySuperAdminExists()
+        {
+            return _userDal.AnySuperAdminExists();
+        }
+
         [SecuredOperation("superAdmin")]
         public IResult Delete(int userId)
         {
@@ -85,8 +118,26 @@ namespace Business.Concrete
             if (userToDelete == null)
                 return new ErrorResult("Kullanıcı bulunamadı");
 
+            if (_userDal.IsSuperAdmin(userId))
+                return new ErrorResult("SuperAdmin kullanıcısı silinemez!");
+
+            _userDal.DeleteUserClaims(userId);
             _userDal.Delete(userToDelete);
             return new SuccessResult("Kullanıcı silindi");
+        }
+
+        [SecuredOperation("superAdmin")]
+        public IResult ResetUsers()
+        {
+            var deletedCount = _userDal.ResetUsersExceptSuperAdmin();
+            return new SuccessResult($"SuperAdmin dışındaki tüm kullanıcılar ({deletedCount} kullanıcı) başarıyla silindi.");
+        }
+
+        [SecuredOperation("superAdmin")]
+        public IResult ResetDatabase()
+        {
+            var deletedCount = _userDal.ResetDatabaseExceptSuperAdmin();
+            return new SuccessResult($"Veritabanı sıfırlandı. SuperAdmin korundu, {deletedCount} kullanıcı ve tüm içerik verileri temizlendi.");
         }
 
     }

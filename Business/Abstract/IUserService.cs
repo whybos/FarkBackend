@@ -1,4 +1,4 @@
-﻿using Core.Entities.Concrete;
+using Core.Entities.Concrete;
 using Core.Utilities.Results.Abstract;
 using Entities.DTOs;
 using System;
@@ -20,6 +20,10 @@ namespace Business.Abstract
         IDataResult<User> GetById(int id);
         IResult AddRoleToUser(int userId, string roleName);
         IResult Delete(int userId);
+        bool IsSuperAdmin(int userId);
+        bool AnySuperAdminExists();
+        IResult ResetUsers();
+        IResult ResetDatabase();
 
     }
 }

@@ -1,4 +1,4 @@
-﻿using Business.Abstract;
+using Business.Abstract;
 using Business.BusinessAspects.Autofac;
 using Business.Constants;
 using Core.Utilities.Results.Abstract;
@@ -104,6 +104,10 @@ namespace Business.Concrete
         public IResult Update(NewsDetailUpdateDto newsDetailUpdateDto)
         {
             var getResult = _newsDetailDal.Get(s => s.Id == newsDetailUpdateDto.Id);
+            if (getResult == null && newsDetailUpdateDto.NewsId > 0)
+            {
+                getResult = _newsDetailDal.Get(s => s.NewsId == newsDetailUpdateDto.NewsId);
+            }
             if (getResult == null)
             {
                 return new ErrorResult("Data Bulunamadı");

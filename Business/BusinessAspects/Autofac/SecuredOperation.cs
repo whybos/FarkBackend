@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -20,19 +20,24 @@ namespace Business.BusinessAspects.Autofac
 
         public SecuredOperation(string roles)
         {
-            _roles = roles.Split(',');
+            _roles = roles.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                          .Select(r => r.Trim())
+                          .ToArray();
             _httpContextAccessor = ServiceTool.ServiceProvider.GetService<IHttpContextAccessor>();
-
         }
 
         protected override void OnBefore(IInvocation invocation)
         {
-            var roleClaims = _httpContextAccessor.HttpContext.User.ClaimRoles();
-            foreach (var role in _roles)
+            var httpContext = _httpContextAccessor?.HttpContext;
+            var roleClaims = httpContext?.User?.ClaimRoles();
+            if (roleClaims != null)
             {
-                if (roleClaims.Contains(role))
+                foreach (var role in _roles)
                 {
-                    return;
+                    if (roleClaims.Any(c => string.Equals(c?.Trim(), role, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        return;
+                    }
                 }
             }
             throw new Exception(Messages.AuthorizationDenied);
